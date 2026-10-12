@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Abram's Journeys</title>
+<style>
+  :root{
+    --navy:#14254a; --navy-2:#1e3566; --navy-3:#2c4a86;
+    --gold:#c9a227; --gold-2:#e2c45a; --gold-soft:#f6ecc8;
+    --ink:#1b2236; --muted:#5b6478; --bg:#f7f5ef; --card:#ffffff; --line:#e3dfd2;
+    --land:#f1e7cc; --sea:#c6d9e8; --coast:#8fb0cc; --river:#6f9cc4; --side:#a0522d;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Georgia,"Times New Roman",serif;background:var(--bg);color:var(--ink);line-height:1.5}
+  .ui{font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  header{background:var(--navy);color:#fff;padding:18px 16px 16px;border-bottom:4px solid var(--gold)}
+  .wrap{max-width:1200px;margin:0 auto;padding:0 16px}
+  header h1{margin:0;font-size:clamp(1.35rem,3.2vw,2rem)}
+  header p{margin:4px 0 0;color:#d6dcea;font-family:system-ui,sans-serif;font-size:.93rem}
+
+  main{padding:18px 0 30px}
+  .layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);gap:18px;align-items:start}
+  .mapcard{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 2px 10px rgba(20,37,74,.06)}
+  svg#map{display:block;width:100%;aspect-ratio:5/3;background:var(--sea);touch-action:manipulation}
+  .sea{fill:var(--sea);stroke:var(--coast)}
+  .river{fill:none;stroke:var(--river);stroke-linecap:round;stroke-linejoin:round}
+  .region{fill:#9b8c63;font-family:system-ui,sans-serif;font-weight:700;letter-spacing:.18em;text-anchor:middle;transition:opacity .5s;pointer-events:none}
+  .region.water{fill:#5f84a6;font-style:italic;letter-spacing:.12em}
+  .route{fill:none;stroke:var(--navy);stroke-linecap:round;stroke-linejoin:round}
+  .route.past{stroke:var(--navy-3);opacity:.55}
+  .route.side{stroke:var(--side)}
+  .place circle{fill:#fff;stroke:var(--navy)}
+  .place.cur circle{fill:var(--gold);stroke:var(--navy)}
+  .place.ruin circle{fill:#5b4636;stroke:#2a1f17}
+  .place text{font-family:system-ui,sans-serif;font-weight:700;fill:var(--navy);paint-order:stroke;stroke:#fff;stroke-linejoin:round;pointer-events:none}
+  .place{cursor:pointer;transition:opacity .4s}
+  #traveler{fill:var(--gold);stroke:var(--navy)}
+  .halo{fill:none;stroke:var(--gold);opacity:.6}
+
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px;border-top:1px solid var(--line);background:#fbfaf6}
+  .btn{font-family:system-ui,sans-serif;border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:.9rem}
+  .btn.primary{background:var(--navy);color:#fff}
+  .btn.gold{background:var(--gold);color:var(--navy)}
+  .btn.ghost{background:#fff;color:var(--navy);border:1.5px solid var(--navy)}
+  .btn:disabled{opacity:.35;cursor:default}
+  .miles{margin-left:auto;font-family:system-ui,sans-serif;font-size:.85rem;color:var(--muted)}
+  .miles b{color:var(--navy)}
+  .chips{display:flex;gap:5px;overflow-x:auto;padding:10px 12px 12px;border-top:1px solid var(--line)}
+  .chips button{flex:none;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--navy);background:#fff;color:var(--navy);font-weight:700;font-family:system-ui,sans-serif;cursor:pointer}
+  .chips button.done{background:var(--navy-3);color:#fff;border-color:var(--navy-3)}
+  .chips button.on{background:var(--gold);color:var(--navy);border-color:var(--navy);box-shadow:0 0 0 2px var(--gold-soft)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-top:6px solid var(--gold);border-radius:12px;padding:18px 18px 16px;box-shadow:0 2px 10px rgba(20,37,74,.06)}
+  .kicker{font-family:system-ui,sans-serif;font-size:.78rem;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted)}
+  .card h2{margin:4px 0 6px;color:var(--navy);font-size:1.45rem;line-height:1.2}
+  .meta{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+  .pill{font-family:system-ui,sans-serif;font-size:.78rem;font-weight:700;border-radius:999px;padding:3px 10px}
+  .pill.ref{background:var(--navy);color:var(--gold-2)}
+  .pill.loc{background:var(--gold-soft);color:#6d5410;border:1px solid var(--gold)}
+  .pill.age{background:#eef1f7;color:var(--navy-3)}
+  .card p{margin:0 0 10px}
+  .card h3{margin:0 0 4px;font-family:system-ui,sans-serif;font-size:.72rem;text-transform:uppercase;letter-spacing:1.1px;color:var(--navy-3)}
+  .why{background:var(--bg);border-left:4px solid var(--navy-3);border-radius:8px;padding:10px 12px;margin:6px 0 10px}
+  .why p{margin:0}
+  .promises{margin:4px 0 10px}
+  .badges{display:flex;gap:6px;flex-wrap:wrap}
+  .badge{font-family:system-ui,sans-serif;font-size:.8rem;font-weight:700;border-radius:8px;padding:5px 10px;border:1.5px dashed #c9c4b3;color:#aaa392;background:#fff}
+  .badge.on{border:1.5px solid var(--gold);background:var(--gold);color:var(--navy)}
+  .ccc{font-family:system-ui,sans-serif;font-size:.84rem;color:var(--muted)}
+  .ccc b{color:var(--navy)}
+  .reflect{background:var(--gold-soft);border-left:4px solid var(--gold);border-radius:8px;padding:10px 12px}
+  .reflect h3{color:#7a5f10}
+  .reflect p{margin:0}
+  .legend{display:flex;gap:14px;flex-wrap:wrap;font-family:system-ui,sans-serif;font-size:.78rem;color:var(--muted);margin-top:10px}
+  .sw{display:inline-block;width:22px;height:0;border-top:3px solid var(--navy);vertical-align:middle;margin-right:5px}
+  .sw.side{border-top:3px dashed var(--side)}
+  .dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--gold);border:2px solid var(--navy);vertical-align:middle;margin-right:5px}
+  footer{font-family:system-ui,sans-serif;font-size:.76rem;color:var(--muted);text-align:center;padding:0 16px 28px;max-width:900px;margin:0 auto}
+
+  @media (max-width:900px){ .layout{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Abram's Journeys in Genesis</h1>
+    <p>Follow Abram from Ur to the Promised Land, one step of the story at a time. Use Next, the numbered steps, or the ← → keys.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="layout">
+    <div>
+      <div class="mapcard">
+        <svg id="map" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Map of the ancient Near East showing Abram's journeys">
+          <rect x="-3000" y="-3000" width="7000" height="7000" fill="var(--land)"/>
+          <g id="water"></g>
+          <g id="rivers"></g>
+          <g id="regions"></g>
+          <g id="routes"></g>
+          <circle id="halo" class="halo" r="0"/>
+          <g id="places"></g>
+          <circle id="traveler" r="0"/>
+        </svg>
+        <div class="controls">
+          <button class="btn ghost" id="prev">← Back</button>
+          <button class="btn primary" id="next">Next →</button>
+          <button class="btn gold" id="play">▶ Play</button>
+          <button class="btn ghost" id="zoom">Whole map</button>
+          <span class="miles" id="miles"></span>
+        </div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="legend">
+        <span><span class="sw"></span>Abram's route</span>
+        <span><span class="sw side"></span>Someone else's route (Lot, Hagar)</span>
+        <span><span class="dot"></span>Where the story is now</span>
+      </div>
+    </div>
+    <aside class="card" id="card" aria-live="polite"></aside>
+  </div>
+</main>
+
+<footer>Genesis names the places but not the roads, so these routes are traditional reconstructions following the river valleys and trade roads of the time. Several locations (especially Ur, Sodom, and Beer-lahai-roi) are debated by scholars; markers show the most common identifications. Mileage is a rough estimate.</footer>
+
+<script>
+// ---------- Projection ----------
+const K = 52.6, KY = 63.12;            // px per degree lon / lat
+const P = (lat, lon) => [(lon - 29.5) * K, (38 - lat) * KY];
+const toPts = arr => arr.map(([a,b]) => P(a,b).map(v => v.toFixed(1)).join(',')).join(' ');
+const toD = arr => 'M' + arr.map(([a,b]) => P(a,b).map(v => v.toFixed(1)).join(' ')).join(' L');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (tag, attrs={}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+
+// ---------- Geography (simplified) ----------
+const SEAS = [
+  // Mediterranean
+  [[31.2,29.5],[31.25,29.9],[31.45,30.4],[31.55,31.1],[31.5,31.8],[31.27,32.3],[31.13,33.8],[31.5,34.45],[31.67,34.55],[32.08,34.77],[32.82,35.0],[32.93,35.07],[33.27,35.2],[33.9,35.5],[34.43,35.82],[35.52,35.78],[36.1,35.95],[36.6,36.17],[36.85,35.6],[36.8,34.6],[36.4,33.9],[36.08,32.8],[36.55,32.0],[36.88,30.7],[36.3,29.5]],
+  // Gulf of Suez
+  [[29.97,32.55],[29.9,32.7],[29.0,33.1],[28.5,33.55],[28.3,33.55],[28.3,33.0],[29.3,32.6]],
+  // Gulf of Aqaba
+  [[29.55,34.95],[29.52,35.0],[28.3,34.85],[28.3,34.5]],
+  // Persian Gulf
+  [[30.0,48.6],[29.95,48.2],[29.4,47.95],[29.2,48.1],[28.3,48.5],[28.3,48.8],[30.0,48.8]],
+  // Salt Sea (Dead Sea)
+  [[31.77,35.52],[31.7,35.58],[31.3,35.53],[31.05,35.46],[31.1,35.39],[31.5,35.44],[31.75,35.46]],
+  // Sea of Galilee
+  [[32.88,35.57],[32.82,35.65],[32.7,35.62],[32.72,35.55]]
+];
+const CYPRUS = [[35.1,32.3],[35.4,33.0],[35.35,33.9],[35.65,34.6],[35.0,34.0],[34.6,33.0],[34.7,32.4]];
+const RIVERS = [
+  [[38.2,38.6],[37.5,38.2],[37.03,37.98],[36.82,38.0],[36.3,38.2],[35.95,39.0],[35.33,40.14],[34.45,40.92],[34.13,42.38],[33.64,42.83],[33.42,43.3],[33.35,43.78],[32.54,44.42],[31.8,44.95],[31.32,45.28],[31.05,46.26],[31.0,47.43],[30.5,47.8],[29.95,48.5]], // Euphrates
+  [[38.2,40.0],[37.9,40.2],[37.33,42.2],[36.34,43.13],[35.4,43.4],[34.6,43.68],[34.2,43.87],[33.31,44.36],[32.5,45.82],[31.83,47.15],[31.0,47.43]], // Tigris
+  [[36.86,39.03],[36.4,39.05],[35.95,39.0]], // Balikh (Haran)
+  [[28.3,30.85],[29.07,31.1],[30.05,31.25]], // Nile
+  [[30.05,31.25],[30.8,30.8],[31.45,30.37]], // Rosetta branch
+  [[30.05,31.25],[30.8,31.3],[31.5,31.83]],  // Damietta branch
+  [[33.25,35.62],[32.88,35.6]], [[32.7,35.57],[32.4,35.55],[32.1,35.52],[31.77,35.55]] // Jordan
+];
+const REGIONS = [
+  {t:'THE GREAT SEA', ll:[33.0,32.4], water:true, big:true},
+  {t:'MESOPOTAMIA', ll:[34.2,42.6], big:true},
+  {t:'ARAM', ll:[35.0,37.7], big:true},
+  {t:'CANAAN', ll:[31.85,36.6], big:true},
+  {t:'EGYPT', ll:[29.4,30.6], big:true},
+  {t:'ARABIAN DESERT', ll:[31.3,41.0], big:true},
+  {t:'Salt Sea', ll:[31.45,35.72], water:true, big:false},
+  {t:'Jordan R.', ll:[32.35,35.78], water:true, big:false},
+];
+
+// ---------- Places ----------
+const PLACES = {
+  ur:        {ll:[30.96,46.10], name:'Ur of the Chaldeans', a:'l'},
+  haran:     {ll:[36.86,39.03], name:'Haran', a:'t'},
+  damascus:  {ll:[33.51,36.29], name:'Damascus', a:'r'},
+  shechem:   {ll:[32.21,35.28], name:'Shechem', a:'r'},
+  bethel:    {ll:[31.93,35.22], name:'Bethel & Ai', a:'r'},
+  negeb:     {ll:[30.85,34.88], name:'The Negeb', a:'r'},
+  egypt:     {ll:[30.6,31.5],   name:'Egypt', a:'b'},
+  sodom:     {ll:[31.05,35.45], name:'Sodom', a:'r'},
+  hebron:    {ll:[31.53,35.10], name:'Hebron (Mamre)', a:'l'},
+  dan:       {ll:[33.25,35.65], name:'Dan', a:'r'},
+  hobah:     {ll:[33.75,36.45], name:'Hobah', a:'r'},
+  salem:     {ll:[31.78,35.23], name:'Salem', a:'l'},
+  lahairoi:  {ll:[30.75,34.45], name:'Beer-lahai-roi', a:'l'},
+  gerar:     {ll:[31.38,34.60], name:'Gerar', a:'l'},
+  beersheba: {ll:[31.24,34.80], name:'Beersheba', a:'r'},
+};
+
+// ---------- Views (lon1, lon2, lat1, lat2) ----------
+const VIEWS = {
+  all:    [29.5,48.5,28.5,38],
+  levant: [33.6,41.0,31.3,37.5],
+  canaan: [34.2,36.1,30.95,32.45],
+  egypt:  [30.9,36.1,30.15,32.45],
+  north:  [34.3,37.1,31.25,34.1],
+  south:  [34.05,35.8,30.5,31.8],
+};
+
+// ---------- The story ----------
+const STEPS = [
+  { title:"A Family in Ur", ref:"Genesis 11:27–31", loc:"Ur of the Chaldeans", age:"",
+    view:'all', focus:'ur', places:['ur'], routes:[], promises:[],
+    text:"The story begins with Terah's family in Ur, a wealthy city in southern Mesopotamia near the Euphrates River. Terah's son Abram is married to Sarai, and the Bible tells us right away that Sarai has no children.",
+    why:"Ur was a city of many gods. Joshua 24:2 says that Abram's own family once served other gods. God's plan to save the world starts with an ordinary family that doesn't yet know him.",
+    ccc:"CCC 59", reflect:"Why do you think Genesis makes a point of telling us that Sarai could not have children?" },
+
+  { title:"North to Haran", ref:"Genesis 11:31–32", loc:"Haran", age:"",
+    view:'all', focus:'haran', places:['ur','haran'],
+    routes:[{type:'main', pts:[[30.96,46.10],[31.3,45.4],[32.4,44.5],[33.4,43.4],[34.1,42.4],[34.45,40.92],[35.33,40.14],[35.95,39.05],[36.86,39.03]]}],
+    promises:[],
+    text:"Terah takes Abram, Sarai, and his grandson Lot and sets out for the land of Canaan. They follow the Euphrates River northwest, but they stop and settle in Haran. Terah dies there.",
+    why:"Traveling along the river meant water for people and animals. Notice that they set out for Canaan but stopped halfway. Abram's real journey hasn't started yet.",
+    ccc:"", reflect:"Have you ever started something important and stopped halfway? What made you stop?" },
+
+  { title:"God Calls Abram", ref:"Genesis 12:1–4", loc:"Haran", age:"Abram is 75",
+    view:'all', focus:'haran', places:['ur','haran'], routes:[], promises:['land','seed','blessing'],
+    text:"In Haran, God speaks to Abram. He tells him to leave his country, his relatives, and his father's house and go to a land God will show him. God promises to make him a great nation, to make his name great, and to bless all the families of the earth through him. Abram goes.",
+    why:"This is one of the turning points of the whole Bible. After the scattering at Babel (Genesis 11), God begins gathering the human family back through one man's faith. (In Acts 7:2–4, St. Stephen says God first called Abram back in Mesopotamia, before Haran.)",
+    ccc:"CCC 59–60, 145 (Hebrews 11:8)", reflect:"God didn't tell Abram where he was going, only to go. What would make it hard for you to say yes to a call like that?" },
+
+  { title:"Into Canaan: Shechem", ref:"Genesis 12:4–7", loc:"Shechem, the oak of Moreh", age:"Abram is 75",
+    view:'levant', focus:'shechem', places:['damascus','shechem'],
+    routes:[{type:'main', pts:[[36.86,39.03],[36.7,38.1],[36.2,37.2],[35.13,36.75],[34.3,36.6],[33.51,36.29],[33.0,35.8],[32.5,35.55],[32.21,35.28]]}],
+    promises:['land'],
+    text:"Abram leaves Haran with Sarai, Lot, their possessions, and their servants. They travel south through Aram and enter Canaan. At Shechem, by the oak of Moreh, God appears to Abram and promises this land to his descendants. Abram builds an altar to the Lord.",
+    why:"The land is already full of Canaanites, and Abram has no children. The promise seems impossible on both counts, but Abram answers it with worship, not argument.",
+    ccc:"CCC 2570", reflect:"Abram built an altar to mark the place where God spoke to him. How could you mark the places where God has been present in your life?" },
+
+  { title:"Between Bethel and Ai", ref:"Genesis 12:8–9", loc:"Between Bethel and Ai", age:"",
+    view:'canaan', focus:'bethel', places:['bethel'],
+    routes:[{type:'main', pts:[[32.21,35.28],[32.05,35.25],[31.93,35.22]]}],
+    promises:[],
+    text:"Abram moves on to the hill country, pitching his tent between Bethel to the west and Ai to the east. He builds another altar and calls on the name of the Lord, then keeps traveling in stages toward the Negeb in the south.",
+    why:"Abram lives in a tent, but he builds altars. His home moves while his worship stays. Bethel will become a holy place again in the story of his grandson Jacob (Genesis 28).",
+    ccc:"CCC 2570", reflect:"What is something that stays the same in your faith no matter where you are?" },
+
+  { title:"Famine: Down to Egypt", ref:"Genesis 12:10–20", loc:"Egypt", age:"",
+    view:'egypt', focus:'egypt', places:['negeb','egypt'],
+    routes:[{type:'main', pts:[[31.93,35.22],[31.53,35.12],[31.24,34.9],[30.85,34.88],[30.95,34.1],[31.05,33.4],[30.95,32.4],[30.6,31.5]]}],
+    promises:[],
+    text:"A famine strikes Canaan, so Abram goes down to Egypt. Afraid the Egyptians will kill him to take his beautiful wife, he tells Sarai to say she is his sister. Pharaoh takes Sarai into his household. God strikes Pharaoh's house with plagues, and Pharaoh sends Abram and Sarai away.",
+    why:"Abram's faith is real but not perfect. Fear makes him put Sarai in danger. God protects her and the promise anyway. Look ahead: plagues on Pharaoh and a family leaving Egypt will happen again in the Exodus.",
+    ccc:"", reflect:"Abram lied because he was afraid. When does fear push people to make bad choices?" },
+
+  { title:"Back to Bethel; Lot Chooses", ref:"Genesis 13:1–13", loc:"Bethel; Lot goes to Sodom", age:"",
+    view:'egypt', focus:'bethel', places:['negeb','bethel','sodom'],
+    routes:[
+      {type:'main', pts:[[30.6,31.5],[30.85,32.4],[30.95,33.4],[30.85,34.2],[30.85,34.88],[31.3,35.0],[31.6,35.15],[31.93,35.22]]},
+      {type:'side', pts:[[31.93,35.22],[31.85,35.44],[31.5,35.37],[31.2,35.37],[31.05,35.45]]}
+    ],
+    promises:[],
+    text:"Abram returns to the altar at Bethel, now rich in flocks, silver, and gold. There isn't enough land for both Abram's herds and Lot's, and their herdsmen quarrel. Abram lets Lot choose first. Lot picks the well-watered plain of the Jordan and settles near Sodom, a city known for its wickedness.",
+    why:"Abram is the elder and could have chosen first. Instead he trusts God and lets Lot pick. Lot chooses by what looks best and ends up living next to Sodom.",
+    ccc:"", reflect:"Lot chose what looked best. Abram chose to keep the peace. Which one is harder to do, and why?" },
+
+  { title:"Hebron: The Oaks of Mamre", ref:"Genesis 13:14–18", loc:"Hebron (Mamre)", age:"",
+    view:'canaan', focus:'hebron', places:['hebron'],
+    routes:[{type:'main', pts:[[31.93,35.22],[31.78,35.2],[31.53,35.10]]}],
+    promises:['land','seed'],
+    text:"After Lot leaves, God tells Abram to look north, south, east, and west. All the land he can see will belong to him and his descendants forever, and his descendants will be as many as the dust of the earth. Abram moves his tent to the oaks of Mamre at Hebron and builds an altar.",
+    why:"Lot took the land that looked best, but God gives Abram all of it. Hebron becomes Abram's home base for most of the story.",
+    ccc:"CCC 706", reflect:"God told Abram to walk through the land and look at it. Why do you think God wanted him to see it with his own eyes?" },
+
+  { title:"Rescuing Lot; Melchizedek", ref:"Genesis 14", loc:"Dan, Hobah, and Salem", age:"",
+    view:'north', focus:'salem', places:['dan','hobah','salem'],
+    routes:[{type:'main', pts:[[31.53,35.10],[31.9,35.25],[32.4,35.35],[32.9,35.5],[33.25,35.65],[33.5,36.1],[33.75,36.45],[33.4,36.1],[32.9,35.7],[32.3,35.5],[31.78,35.23]]}],
+    promises:['blessing'],
+    text:"Four invading kings raid Sodom and carry Lot away. Abram gathers 318 trained men, chases the raiders all the way to Dan, attacks at night, and pursues them past Damascus to Hobah. He rescues Lot and everything that was taken. On the way home, Melchizedek, king of Salem and priest of God Most High, brings out bread and wine and blesses Abram. Abram gives him a tenth of everything.",
+    why:"Melchizedek is a mysterious priest-king who offers bread and wine. The Church sees him as a figure of Christ, the eternal High Priest, and of the Eucharist. He is named in the first Eucharistic Prayer at Mass.",
+    ccc:"CCC 58, 1333, 1544", reflect:"Abram risked everything to rescue the relative who had taken the better land. What does that say about him?" },
+
+  { title:"Count the Stars", ref:"Genesis 15", loc:"Hebron (Mamre)", age:"",
+    view:'canaan', focus:'hebron', places:['hebron'], routes:[], promises:['seed','land'],
+    text:"Abram tells God his worry: he has no child, so a servant, Eliezer of Damascus, will inherit everything. God brings him outside and tells him to count the stars, because his descendants will be just as many. Abram believes God, and God credits it to him as righteousness. God then makes a solemn covenant with him: a smoking fire pot and a flaming torch pass between the halves of the animals Abram prepared.",
+    why:"Genesis 15:6 is one of the most important verses in the Bible about faith. St. Paul quotes it in Romans 4. Abram trusts the promise before he sees any of it.",
+    ccc:"CCC 146", reflect:"Abram was honest with God about his worry. Is it okay to tell God what's bothering you? Why?" },
+
+  { title:"Hagar and Ishmael", ref:"Genesis 16", loc:"Toward Shur: Beer-lahai-roi", age:"Abram is 86",
+    view:'south', focus:'lahairoi', places:['lahairoi'],
+    routes:[{type:'side', pts:[[31.53,35.10],[31.2,34.85],[30.75,34.45]]}],
+    promises:[],
+    text:"After ten years in Canaan with no child, Sarai gives her Egyptian servant Hagar to Abram so they can have a child through her. When Hagar becomes pregnant, there is bitterness between the two women, and Hagar runs away into the wilderness. An angel of the Lord finds her by a spring, promises that her son will have many descendants, and sends her back. She names God 'the God who sees me.' Her son Ishmael is born.",
+    why:"Abram and Sarai try to make God's promise happen on their own schedule, and it causes pain for everyone. Still, God sees and cares for Hagar, the outsider with no power.",
+    ccc:"", reflect:"Hagar called God 'the God who sees me.' Who in your school or neighborhood might need to know that God sees them?" },
+
+  { title:"New Names, a New Sign", ref:"Genesis 17", loc:"Hebron (Mamre)", age:"Abram is 99",
+    view:'canaan', focus:'hebron', places:['hebron'], routes:[], promises:['land','seed','blessing'],
+    text:"God appears as God Almighty and renews the covenant. He changes Abram's name to Abraham, 'father of a multitude,' and Sarai's name to Sarah. Circumcision becomes the sign of the covenant for every male in the household. God promises that Sarah herself will have a son, Isaac, within a year. Abraham falls on his face and laughs.",
+    why:"In the Bible, a new name means a new identity and a new mission. Christians receive their own covenant sign in Baptism.",
+    ccc:"CCC 60, 527", reflect:"Why do you think God gave Abram and Sarai new names? What name were you given at Baptism, and who is your patron saint?" },
+
+  { title:"Visitors at Mamre; Sodom Falls", ref:"Genesis 18–19", loc:"Hebron (Mamre)", age:"Abraham is 99",
+    view:'canaan', focus:'hebron', places:['hebron','sodom'], routes:[], promises:['blessing'], ruin:true,
+    text:"Three visitors come to Abraham's tent in the heat of the day, and he rushes to serve them a meal. They promise that Sarah will have a son by this time next year, and Sarah laughs. Abraham then pleads with God for Sodom: would God spare the city for fifty righteous people? Forty-five? All the way down to ten. Ten are not found. Angels lead Lot's family out, and Sodom is destroyed. The next morning, Abraham looks toward Sodom from Mamre and sees smoke rising.",
+    why:"Abraham shows two great virtues: hospitality to strangers and prayer for others, even for a wicked city. The Church calls this kind of prayer intercession.",
+    ccc:"CCC 2571, 2635", reflect:"Abraham kept asking God to show mercy. Who could you pray for this week, even someone hard to like?" },
+
+  { title:"Gerar: The Same Mistake", ref:"Genesis 20", loc:"Gerar", age:"",
+    view:'south', focus:'gerar', places:['gerar'],
+    routes:[{type:'main', pts:[[31.53,35.10],[31.4,34.9],[31.38,34.60]]}],
+    promises:[],
+    text:"Abraham moves south to Gerar and again says Sarah is his sister. King Abimelech takes her, but God warns him in a dream, and he returns Sarah untouched. Abraham prays for Abimelech's household, and God heals them.",
+    why:"Even after all God's promises, Abraham repeats the sin he committed in Egypt. God's faithfulness doesn't depend on Abraham being perfect.",
+    ccc:"", reflect:"Why do people sometimes repeat the same mistake? What helps someone actually change?" },
+
+  { title:"Isaac Is Born; Beersheba", ref:"Genesis 21", loc:"Beersheba", age:"Abraham is 100",
+    view:'south', focus:'beersheba', places:['beersheba'],
+    routes:[{type:'main', pts:[[31.38,34.60],[31.3,34.7],[31.24,34.80]]}],
+    promises:['seed'],
+    text:"Just as God promised, Sarah gives birth to a son, and they name him Isaac, which means 'he laughs.' Hagar and Ishmael are sent away, and God cares for them in the wilderness of Beersheba. Abraham and Abimelech swear an oath of peace over a well, so the place is called Beersheba, 'well of the oath.' Abraham plants a tamarisk tree and calls on the Lord, the everlasting God.",
+    why:"After 25 years of waiting, the promised son is finally born. The laughter of doubt (Genesis 17–18) becomes the laughter of joy.",
+    ccc:"", reflect:"Abraham and Sarah waited 25 years. What is something worth waiting for, even a long time?" },
+
+  { title:"The Test on Mount Moriah", ref:"Genesis 22", loc:"The land of Moriah", age:"",
+    view:'canaan', focus:'salem', places:['salem'],
+    routes:[{type:'main', pts:[[31.24,34.80],[31.4,34.98],[31.6,35.15],[31.78,35.23]]}],
+    promises:['land','seed','blessing'],
+    text:"God tests Abraham: he tells him to take his beloved son Isaac to the land of Moriah and offer him as a sacrifice. After a three-day journey, Isaac carries the wood up the mountain and asks where the lamb is. Abraham answers that God will provide. At the last moment an angel stops Abraham, and he offers a ram caught in a thicket instead. God renews every promise. They return to Beersheba.",
+    why:"Tradition places Moriah at Jerusalem, where the Temple would later stand (2 Chronicles 3:1), near Calvary. The beloved son carrying the wood up the hill points ahead to Jesus carrying his Cross. Here God spares Abraham's son. On Calvary, God does not spare his own.",
+    ccc:"CCC 2572", reflect:"What connections can you find between Isaac on Mount Moriah and Jesus on Calvary?" },
+
+  { title:"The Cave of Machpelah", ref:"Genesis 23; 25:7–10", loc:"Hebron", age:"Abraham dies at 175",
+    view:'canaan', focus:'hebron', places:['hebron'],
+    routes:[{type:'main', pts:[[31.24,34.80],[31.4,34.95],[31.53,35.10]]}],
+    promises:[],
+    text:"Sarah dies at Hebron at age 127, and Abraham mourns her. He buys a field and the cave of Machpelah from Ephron the Hittite to bury her. Years later, Abraham dies 'old and full of years,' and his sons Isaac and Ishmael bury him in the same cave beside Sarah.",
+    why:"The only piece of the Promised Land Abraham ever owned was a grave. He died still trusting God's promise, which would unfold over many more generations (Hebrews 11:13).",
+    ccc:"CCC 145–146", reflect:"Abraham never saw most of God's promises come true in his lifetime. Was God still faithful to him? How do you know?" },
+];
+
+// ---------- Build map ----------
+const svg = document.getElementById('map');
+const gW = document.getElementById('water'), gR = document.getElementById('rivers'),
+      gReg = document.getElementById('regions'), gRt = document.getElementById('routes'),
+      gP = document.getElementById('places'), trav = document.getElementById('traveler'),
+      halo = document.getElementById('halo');
+
+const seaEls = SEAS.map(s => el('polygon', {points: toPts(s), class:'sea'}, gW));
+const cyprus = el('polygon', {points: toPts(CYPRUS), fill:'var(--land)', stroke:'var(--coast)'}, gW);
+const riverEls = RIVERS.map(r => el('polyline', {points: toPts(r), class:'river'}, gR));
+const regionEls = REGIONS.map(r => {
+  const [x,y] = P(...r.ll);
+  const t = el('text', {x, y, class:'region' + (r.water ? ' water':'')}, gReg);
+  t.textContent = r.t; t._big = r.big; return t;
+});
+
+const placeEls = {};
+for (const id in PLACES) {
+  const p = PLACES[id], [x,y] = P(...p.ll);
+  const g = el('g', {class:'place', 'data-id':id}, gP);
+  const c = el('circle', {cx:x, cy:y}, g);
+  const t = el('text', {}, g);
+  t.textContent = p.name;
+  g.addEventListener('click', () => {
+    // jump to the most recent step (up to now) that happens at this place
+    const hits = STEPS.map((s,i) => s.focus === id ? i : -1).filter(i => i >= 0 && i <= cur);
+    if (hits.length) { stopPlay(); go(hits.pop()); }
+  });
+  placeEls[id] = {g, c, t, x, y, a:p.a};
+}
+
+// Routes per step
+const routeEls = STEPS.map(s => s.routes.map(r => {
+  const path = el('path', {d: toD(r.pts), class:'route' + (r.type==='side' ? ' side':'')}, gRt);
+  path._type = r.type; path._len = path.getTotalLength(); path._pts = r.pts;
+  path.style.display = 'none';
+  return path;
+}));
+
+// ---------- Scale handling ----------
+let vb = [0,0,1000,600], S = 1;
+function setVB(v){
+  vb = v; S = v[2] / 1000;
+  svg.setAttribute('viewBox', v.map(n => n.toFixed(2)).join(' '));
+  seaEls.forEach(e => e.setAttribute('stroke-width', 1.2*S));
+  cyprus.setAttribute('stroke-width', 1.2*S);
+  riverEls.forEach(e => e.setAttribute('stroke-width', 1.8*S));
+  regionEls.forEach(t => {
+    t.setAttribute('font-size', (t._big ? 15 : 12) * S);
+    t.style.opacity = t._big ? (S > 0.45 ? 1 : 0) : (S < 0.35 ? 1 : 0);
+  });
+  for (const id in placeEls) {
+    const p = placeEls[id], isCur = p.g.classList.contains('cur');
+    p.c.setAttribute('r', (isCur ? 8 : 5.5) * S);
+    p.c.setAttribute('stroke-width', 2*S);
+    const fs = 13*S, off = 11*S;
+    p.t.setAttribute('font-size', fs);
+    p.t.setAttribute('stroke-width', 3.5*S);
+    let x = p.x, y = p.y, anchor = 'middle', dy = '0.35em';
+    if (p.a === 'r'){ x += off; anchor = 'start'; }
+    if (p.a === 'l'){ x -= off; anchor = 'end'; }
+    if (p.a === 't'){ y -= off*1.2; dy = '0'; }
+    if (p.a === 'b'){ y += off*1.2; dy = '0.8em'; }
+    p.t.setAttribute('x', x); p.t.setAttribute('y', y);
+    p.t.setAttribute('text-anchor', anchor); p.t.setAttribute('dy', dy);
+  }
+  routeEls.flat().forEach(r => {
+    r.setAttribute('stroke-width', (r._type==='side' ? 2.6 : 3.6) * S);
+    if (r._type === 'side') r.style.strokeDasharray = `${7*S} ${5*S}`;
+  });
+  trav.setAttribute('r', 7*S); trav.setAttribute('stroke-width', 2.5*S);
+  halo.setAttribute('stroke-width', 3*S);
+}
+function fitView(key){
+  const [lo1,lo2,la1,la2] = VIEWS[key];
+  const [x1,y1] = P(la2,lo1), [x2,y2] = P(la1,lo2);
+  let w = x2-x1, h = y2-y1, cx = (x1+x2)/2, cy = (y1+y2)/2;
+  if (w/h < 5/3) w = h*5/3; else h = w*3/5;
+  w *= 1.06; h *= 1.06;
+  return [cx-w/2, cy-h/2, w, h];
+}
+
+// ---------- Animation ----------
+let token = 0, haloRaf = 0;
+const ease = t => t<.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+function animateVB(target, ms, done){
+  const my = token, from = vb.slice(), t0 = performance.now();
+  function f(now){
+    if (my !== token) return;
+    const t = Math.min(1, (now - t0)/ms), e = ease(t);
+    setVB(from.map((v,i) => v + (target[i]-v)*e));
+    if (t < 1) requestAnimationFrame(f); else done && done();
+  }
+  requestAnimationFrame(f);
+}
+function animateRoutes(paths, done){
+  const my = token;
+  let i = 0;
+  function nextPath(){
+    if (my !== token) return;
+    if (i >= paths.length){ done && done(); return; }
+    const p = paths[i++], len = p._len;
+    p.style.display = '';
+    const dur = Math.max(900, Math.min(3200, (len / vb[2]) * 2600));
+    if (p._type === 'main'){ p.style.strokeDasharray = len; p.style.strokeDashoffset = len; }
+    else { p.style.opacity = 0; }
+    const t0 = performance.now();
+    function f(now){
+      if (my !== token) return;
+      const t = Math.min(1, (now - t0)/dur), e = ease(t);
+      const pt = p.getPointAtLength(len * e);
+      trav.setAttribute('cx', pt.x); trav.setAttribute('cy', pt.y);
+      if (p._type === 'main') p.style.strokeDashoffset = len * (1 - e);
+      else p.style.opacity = Math.min(1, e*1.6);
+      if (t < 1) requestAnimationFrame(f);
+      else { if (p._type==='main'){ p.style.strokeDasharray=''; p.style.strokeDashoffset=''; } nextPath(); }
+    }
+    requestAnimationFrame(f);
+  }
+  nextPath();
+}
+function pulseHalo(x, y){
+  cancelAnimationFrame(haloRaf);
+  halo.setAttribute('cx', x); halo.setAttribute('cy', y);
+  const t0 = performance.now();
+  function f(now){
+    const t = ((now - t0) % 1600) / 1600;
+    halo.setAttribute('r', (8 + 16*t) * S);
+    halo.style.opacity = 0.7 * (1 - t);
+    haloRaf = requestAnimationFrame(f);
+  }
+  haloRaf = requestAnimationFrame(f);
+}
+
+// ---------- Mileage ----------
+const R_MI = 3958.8;
+function hav([a1,o1],[a2,o2]){
+  const r = Math.PI/180, dA = (a2-a1)*r, dO = (o2-o1)*r;
+  const h = Math.sin(dA/2)**2 + Math.cos(a1*r)*Math.cos(a2*r)*Math.sin(dO/2)**2;
+  return 2*R_MI*Math.asin(Math.sqrt(h));
+}
+const stepMiles = STEPS.map(s => s.routes.filter(r => r.type==='main')
+  .reduce((m,r) => m + r.pts.slice(1).reduce((a,p,i) => a + hav(r.pts[i], p), 0), 0));
+
+// ---------- UI ----------
+const chips = document.getElementById('chips');
+STEPS.forEach((s,i) => {
+  const b = document.createElement('button');
+  b.textContent = i+1; b.title = s.title; b.setAttribute('aria-label', `Step ${i+1}: ${s.title}`);
+  b.onclick = () => { stopPlay(); go(i); };
+  chips.appendChild(b);
+});
+
+const PROMISE_LABELS = {land:'Land', seed:'Descendants', blessing:'Blessing to all nations'};
+let cur = 0, zoomedOut = false;
+
+function renderCard(i){
+  const s = STEPS[i];
+  document.getElementById('card').innerHTML = `
+    <div class="kicker">Step ${i+1} of ${STEPS.length}</div>
+    <h2>${s.title}</h2>
+    <div class="meta">
+      <span class="pill ref">${s.ref}</span>
+      <span class="pill loc">${s.loc}</span>
+      ${s.age ? `<span class="pill age">${s.age}</span>` : ''}
+    </div>
+    <p>${s.text}</p>
+    <div class="why"><h3>Why it matters</h3><p>${s.why}</p></div>
+    <div class="promises"><h3>God's promises in this step</h3>
+      <div class="badges">${Object.keys(PROMISE_LABELS).map(k => `<span class="badge ${s.promises.includes(k)?'on':''}">${PROMISE_LABELS[k]}</span>`).join('')}</div>
+    </div>
+    ${s.ccc ? `<p class="ccc"><b>Catechism:</b> ${s.ccc}</p>` : ''}
+    <div class="reflect"><h3>Reflect</h3><p>${s.reflect}</p></div>`;
+}
+
+function go(i, animate = true){
+  i = Math.max(0, Math.min(STEPS.length-1, i));
+  token++;
+  const prevIdx = cur;
+  cur = i; zoomedOut = false;
+  document.getElementById('zoom').textContent = 'Whole map';
+  const s = STEPS[i];
+
+  // routes
+  routeEls.forEach((arr, k) => arr.forEach(p => {
+    p.style.opacity = ''; p.style.strokeDasharray = p._type==='side' ? p.style.strokeDasharray : ''; p.style.strokeDashoffset = '';
+    p.classList.toggle('past', k < i && p._type==='main');
+    p.style.display = k < i ? '' : 'none';
+  }));
+  // places
+  const seen = new Set(); STEPS.slice(0, i+1).forEach(st => st.places.forEach(p => seen.add(p)));
+  for (const id in placeEls){
+    const p = placeEls[id];
+    p.g.style.display = seen.has(id) ? '' : 'none';
+    p.g.classList.toggle('cur', id === s.focus);
+    p.g.classList.toggle('ruin', id === 'sodom' && i >= 12);
+  }
+  placeEls.salem.t.textContent = i >= 15 ? 'Salem / Mt. Moriah' : 'Salem';
+  // chips
+  [...chips.children].forEach((b,k) => { b.classList.toggle('on', k===i); b.classList.toggle('done', k<i); });
+  chips.children[i].scrollIntoView({block:'nearest', inline:'center', behavior:'smooth'});
+  document.getElementById('prev').disabled = i === 0;
+  document.getElementById('next').disabled = i === STEPS.length-1;
+  const miles = stepMiles.slice(0, i+1).reduce((a,b)=>a+b, 0);
+  document.getElementById('miles').innerHTML = `Abram has traveled about <b>${Math.round(miles/10)*10} miles</b>`;
+  renderCard(i);
+
+  // traveler start position
+  const startRoute = s.routes[0];
+  const startLL = startRoute ? startRoute.pts[0] : PLACES[s.focus].ll;
+  const [sx, sy] = P(...startLL);
+  trav.setAttribute('cx', sx); trav.setAttribute('cy', sy);
+  cancelAnimationFrame(haloRaf); halo.style.opacity = 0;
+
+  const target = fitView(s.view);
+  const finish = () => {
+    const f = placeEls[s.focus]; pulseHalo(f.x, f.y);
+    trav.setAttribute('cx', f.x); trav.setAttribute('cy', f.y);
+  };
+  if (!animate){ setVB(target); routeEls[i].forEach(p => p.style.display=''); finish(); return; }
+  animateVB(target, 850, () => animateRoutes(routeEls[i], finish));
+}
+
+// Controls
+document.getElementById('prev').onclick = () => { stopPlay(); go(cur-1); };
+document.getElementById('next').onclick = () => { stopPlay(); go(cur+1); };
+document.getElementById('zoom').onclick = () => {
+  token++;
+  zoomedOut = !zoomedOut;
+  document.getElementById('zoom').textContent = zoomedOut ? 'Back to step' : 'Whole map';
+  routeEls[cur].forEach(p => { p.style.display=''; p.style.strokeDashoffset=''; if(p._type==='main') p.style.strokeDasharray=''; p.style.opacity=''; });
+  const f = placeEls[STEPS[cur].focus];
+  trav.setAttribute('cx', f.x); trav.setAttribute('cy', f.y);
+  animateVB(zoomedOut ? fitView('all') : fitView(STEPS[cur].view), 800, () => pulseHalo(f.x, f.y));
+};
+let playTimer = null;
+function stopPlay(){ clearInterval(playTimer); playTimer = null; document.getElementById('play').textContent = '▶ Play'; }
+document.getElementById('play').onclick = () => {
+  if (playTimer){ stopPlay(); return; }
+  document.getElementById('play').textContent = '❚❚ Pause';
+  if (cur === STEPS.length-1) go(0); else go(cur+1);
+  playTimer = setInterval(() => { if (cur >= STEPS.length-1){ stopPlay(); return; } go(cur+1); }, 9000);
+};
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight'){ stopPlay(); go(cur+1); }
+  if (e.key === 'ArrowLeft'){ stopPlay(); go(cur-1); }
+});
+
+setVB(fitView('all'));
+go(0, false);
+</script>
+</body>
+</html>
